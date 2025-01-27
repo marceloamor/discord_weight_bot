@@ -114,7 +114,7 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     if (message.content.toLowerCase() === 'good bot') {
-        await message.reply('Anytime, love!');
+        await message.reply('Thanks daddy 😇');
         return;
     }
 
@@ -135,6 +135,21 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content.startsWith('!weight')) {
+        const args = message.content.split(' ').slice(1);
+        if (args.length !== 1) {
+            await message.reply('Usage: !weight <weight_in_kg>');
+            return;
+        }
+
+        const weightKg = parseFloat(args[0]);
+        if (isNaN(weightKg)) {
+            await message.reply('Please provide a valid number for weight.');
+            return;
+        }
+
+        // Convert kg to lbs and format to 2 decimal places
+        const weightLbs = parseFloat((weightKg * 2.20462).toFixed(2));
+
         const userColumn = userColumns[message.author.username];
         if (!userColumn) {
             await message.reply('Your username is not mapped to a column. Please contact the admin.');
@@ -142,14 +157,18 @@ client.on('messageCreate', async (message) => {
             return;
         }
 
-        // Assuming parsedWeight is defined somewhere in your code
-        const parsedWeight = { weightLbs: 150 }; // Example placeholder
+        try {
+            // Record weight in Google Sheets
+            await sheetsService.recordWeight({
+                weight: weightLbs,
+                username: message.author.username
+            }, userColumns);
 
-        // Record weight in Google Sheets
-        await sheetsService.recordWeight({
-            weight: parsedWeight.weightLbs,
-            username: message.author.username
-        }, userColumns);
+            await message.reply(`Your weight of ${weightKg} kg (${weightLbs.toFixed(2)} lbs) has been recorded.`);
+        } catch (error) {
+            await message.reply('There was an error recording your weight. Please try again later.');
+            console.error('Error recording weight:', error);
+        }
     }
 });
 
