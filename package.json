@@ -1,0 +1,22 @@
+{
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.10",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.5",
+    "@google-cloud/local-auth": "^3.0.1",
+    "discord.js": "^14.17.3",
+    "dotenv": "^16.4.7",
+    "googleapis": "^144.0.0"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "deploy": "gcloud functions deploy weight-tracker --runtime nodejs18 --trigger-http"
+  }
+}
