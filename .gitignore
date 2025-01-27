@@ -1,5 +1,29 @@
+# Node modules
 node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Environment variables
 .env
+
+# Compiled JavaScript
 dist/
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# IDE specific files
+.vscode/
+.idea/
+
+# Docker
+Dockerfile
+
 credentials.json
 token.json

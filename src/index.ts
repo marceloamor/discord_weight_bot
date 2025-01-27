@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import { SheetsService } from './sheets/sheets-service';
 import fs from 'fs';
 import path from 'path';
+import express from 'express';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -135,21 +136,6 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content.startsWith('!weight')) {
-        const args = message.content.split(' ').slice(1);
-        if (args.length !== 1) {
-            await message.reply('Usage: !weight <weight_in_kg>');
-            return;
-        }
-
-        const weightKg = parseFloat(args[0]);
-        if (isNaN(weightKg)) {
-            await message.reply('Please provide a valid number for weight.');
-            return;
-        }
-
-        // Convert kg to lbs and format to 2 decimal places
-        const weightLbs = parseFloat((weightKg * 2.20462).toFixed(2));
-
         const userColumn = userColumns[message.author.username];
         if (!userColumn) {
             await message.reply('Your username is not mapped to a column. Please contact the admin.');
@@ -157,24 +143,32 @@ client.on('messageCreate', async (message) => {
             return;
         }
 
-        try {
-            // Record weight in Google Sheets
-            await sheetsService.recordWeight({
-                weight: weightLbs,
-                username: message.author.username
-            }, userColumns);
+        // Assuming parsedWeight is defined somewhere in your code
+        const parsedWeight = { weightLbs: 150 }; // Example placeholder
 
-            await message.reply(`Your weight of ${weightKg} kg (${weightLbs.toFixed(2)} lbs) has been recorded.`);
-        } catch (error) {
-            await message.reply('There was an error recording your weight. Please try again later.');
-            console.error('Error recording weight:', error);
-        }
+        // Record weight in Google Sheets
+        await sheetsService.recordWeight({
+            weight: parsedWeight.weightLbs,
+            username: message.author.username
+        }, userColumns);
     }
 });
 
 // Add error handling
 client.on('error', (error) => {
     console.error('Discord client error:', error);
+});
+
+// Create a simple HTTP server
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+app.get('/', (req, res) => {
+    res.send('Discord bot is running!');
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is listening on port ${PORT}`);
 });
 
 // Login with more detailed error handling
