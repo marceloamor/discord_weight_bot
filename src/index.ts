@@ -114,7 +114,7 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     if (message.content.toLowerCase() === 'good bot') {
-        await message.reply('Thank you! 😊');
+        await message.reply('Anytime, love!');
         return;
     }
 
