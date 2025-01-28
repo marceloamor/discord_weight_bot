@@ -190,9 +190,21 @@ client.on('messageCreate', async (message: Message) => {
     }
 });
 
-// Add error handling
+// Add these event handlers after the client initialization
+client.on('disconnect', () => {
+    console.log('Bot disconnected from Discord!');
+});
+
 client.on('error', (error) => {
     console.error('Discord client error:', error);
+});
+
+client.on('reconnecting', () => {
+    console.log('Bot attempting to reconnect...');
+});
+
+client.on('resume', () => {
+    console.log('Bot resumed connection!');
 });
 
 // Create a simple HTTP server
@@ -211,14 +223,18 @@ app.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });
 
-// Login with more detailed error handling
+// Modify the login to include auto-reconnect
 client.login(process.env.DISCORD_TOKEN)
     .then(() => {
         console.log('Successfully logged in to Discord!');
     })
     .catch(error => {
         console.error('Failed to log in to Discord:', error);
-        process.exit(1);
+        // Attempt to reconnect
+        setTimeout(() => {
+            console.log('Attempting to reconnect...');
+            client.login(process.env.DISCORD_TOKEN);
+        }, 5000); // Wait 5 seconds before trying again
     });
 
 console.log('Bot is starting...');
