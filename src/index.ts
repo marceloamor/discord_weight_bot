@@ -133,6 +133,11 @@ client.on('messageCreate', async (message: Message) => {
         return;
     }
 
+    if (message.content.toLowerCase() === 'bad bot') {
+        await message.reply("I'm doing my best 😔");
+        return;
+    }
+
     if (message.content.startsWith('!adduser')) {
         const args = message.content.split(' ').slice(1);
         if (args.length !== 3) {
