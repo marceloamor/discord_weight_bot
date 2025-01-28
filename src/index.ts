@@ -1,10 +1,11 @@
 // Import necessary Discord.js classes and other dependencies
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Message } from 'discord.js';
 import * as dotenv from 'dotenv';
 import { SheetsService } from './sheets/sheets-service';
 import fs from 'fs';
 import path from 'path';
 import express from 'express';
+import { google } from 'googleapis';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -24,41 +25,40 @@ const client = new Client({
 // Initialize sheets service
 const sheetsService = new SheetsService();
 
-// Load user mappings from JSON file
-const userMappingsPath = path.join(__dirname, 'user-mappings.json');
-let userColumns: { [key: string]: string } = {};
+// Define a type for user mappings
+type UserMappings = { [key: string]: string };
 
-// Function to load user mappings from file
-function loadUserMappings() {
-    try {
-        const data = fs.readFileSync(userMappingsPath, 'utf8');
-        userColumns = JSON.parse(data);
-        console.log('User mappings loaded.');
-    } catch (error) {
-        if (error instanceof Error) {
-            console.error('Error loading user mappings:', error.message);
-        } else {
-            console.error('Unknown error loading user mappings:', error);
-        }
-    }
+// Define the path to the user-mappings.json file
+const mappingsPath = path.join(__dirname, 'user-mappings.json');
+
+// Read and parse the JSON file
+let userMappings: UserMappings = {};
+try {
+    const data = fs.readFileSync(mappingsPath, 'utf8');
+    userMappings = JSON.parse(data) as UserMappings;
+    console.log('User mappings loaded:', userMappings);
+} catch (error) {
+    console.error('Error reading user-mappings.json:', error);
 }
 
-// Function to save user mappings to file
-function saveUserMappings() {
-    try {
-        fs.writeFileSync(userMappingsPath, JSON.stringify(userColumns, null, 2));
-        console.log('User mappings saved.');
-    } catch (error) {
-        if (error instanceof Error) {
-            console.error('Error saving user mappings:', error.message);
-        } else {
-            console.error('Unknown error saving user mappings:', error);
-        }
-    }
+// Function to get the mapped username
+function getMappedUsername(username: string): string {
+    return userMappings[username] || 'Username not mapped';
 }
 
-// Load mappings at startup
-loadUserMappings();
+// Add this type definition
+type UserColumns = {
+    [key: string]: string;
+};
+
+// Load user columns configuration
+const userColumns: UserColumns = {
+    // Add your column mappings here
+    A: 'A',
+    B: 'B',
+    C: 'C',
+    // ... add more as needed
+};
 
 // Event handler for when the bot is ready
 client.once(Events.ClientReady, (readyClient) => {
@@ -72,9 +72,9 @@ const MIN_WEIGHT_LBS = 50;  // Minimum reasonable weight in pounds
 const MAX_WEIGHT_LBS = 500; // Maximum reasonable weight in pounds
 const LBS_PER_KG = 2.20462; // Conversion factor for kg to lbs
 
-// Helper function to convert kg to lbs
+// Helper function to convert kg to lbs with rounding
 function kgToLbs(kg: number): number {
-    return kg * LBS_PER_KG;
+    return Number((kg * 2.20462).toFixed(2));
 }
 
 // Helper function to validate weight is within reasonable bounds
@@ -110,8 +110,22 @@ function parseWeightInput(input: string): { weightLbs: number; originalUnit: 'kg
     };
 }
 
+// Helper function to parse weight from message
+function parseWeight(content: string): number | null {
+    const match = content.match(/!weight\s+(\d+\.?\d*)\s*(kg|lbs)?/i);
+    if (!match) return null;
+
+    const value = parseFloat(match[1]);
+    const unit = match[2]?.toLowerCase() || 'lbs';
+
+    if (unit === 'kg') {
+        return kgToLbs(value);
+    }
+    return Number(value.toFixed(2)); // Round lbs values too
+}
+
 // Update the message handler
-client.on('messageCreate', async (message) => {
+client.on('messageCreate', async (message: Message) => {
     if (message.author.bot) return;
 
     if (message.content.toLowerCase() === 'good bot') {
@@ -127,30 +141,47 @@ client.on('messageCreate', async (message) => {
         }
 
         const [column, header, username] = args;
-        userColumns[username] = column;
-        saveUserMappings();
-
-        await message.reply(`Added user: ${header} with username: ${username} in column: ${column}`);
-        console.log(`User added: ${header} (${username}) in column ${column}.`);
-        return;
+        userMappings[username] = column;
+        
+        try {
+            fs.writeFileSync(path.join(__dirname, 'user-mappings.json'), 
+                JSON.stringify(userMappings, null, 2));
+            await message.reply(`Added user: ${header} with username: ${username} in column: ${column}`);
+        } catch (error) {
+            console.error('Error saving user mappings:', error);
+            await message.reply('Error saving user mapping.');
+        }
     }
 
     if (message.content.startsWith('!weight')) {
-        const userColumn = userColumns[message.author.username];
+        const username = message.author.username;
+        const userColumn = userMappings[username];
+
+        console.log('Processing weight for user:', username);
+        console.log('User mappings:', userMappings);
+        console.log('Found column:', userColumn);
+
         if (!userColumn) {
-            await message.reply('Your username is not mapped to a column. Please contact the admin.');
-            console.log(`No mapping found for username: ${message.author.username}`);
+            await message.reply('Your username is not mapped to a column.');
             return;
         }
 
-        // Assuming parsedWeight is defined somewhere in your code
-        const parsedWeight = { weightLbs: 150 }; // Example placeholder
+        const weight = parseWeight(message.content);
+        if (!weight) {
+            await message.reply('Invalid weight format. Please use: !weight <number> [kg|lbs]');
+            return;
+        }
 
-        // Record weight in Google Sheets
-        await sheetsService.recordWeight({
-            weight: parsedWeight.weightLbs,
-            username: message.author.username
-        }, userColumns);
+        try {
+            await sheetsService.recordWeight({
+                weight,
+                username: userColumn
+            }, userMappings);
+            await message.reply(`Weight of ${weight.toFixed(2)} lbs recorded.`);
+        } catch (error) {
+            console.error('Error recording weight:', error);
+            await message.reply('There was an error recording your weight.');
+        }
     }
 });
 
@@ -167,6 +198,10 @@ app.get('/', (req, res) => {
     res.send('Discord bot is running!');
 });
 
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 app.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
 });
@@ -180,3 +215,5 @@ client.login(process.env.DISCORD_TOKEN)
         console.error('Failed to log in to Discord:', error);
         process.exit(1);
     });
+
+console.log('Bot is starting...');

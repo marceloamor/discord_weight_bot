@@ -26,9 +26,9 @@ export class SheetsService {
 
     async recordWeight(entry: WeightEntry, userColumns: { [key: string]: string }) {
         try {
-            const userColumn = userColumns[entry.username];
+            const userColumn = entry.username;
             if (!userColumn) {
-                throw new Error(`No column mapping found for user: ${entry.username}`);
+                throw new Error(`Invalid column: ${entry.username}`);
             }
 
             const today = new Date();
@@ -58,11 +58,11 @@ export class SheetsService {
                 range: updateRange,
                 valueInputOption: 'RAW',
                 requestBody: {
-                    values: [[entry.weight.toString()]]
+                    values: [[entry.weight]]
                 }
             });
 
-            console.log(`Weight recorded for ${entry.username} on ${todayFormatted}.`);
+            console.log(`Weight recorded for column ${userColumn} on ${todayFormatted}.`);
             return true;
         } catch (error) {
             if (error instanceof Error) {
