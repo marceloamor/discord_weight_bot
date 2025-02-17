@@ -51,15 +51,6 @@ type UserColumns = {
     [key: string]: string;
 };
 
-// Load user columns configuration
-const userColumns: UserColumns = {
-    // Add your column mappings here
-    A: 'A',
-    B: 'B',
-    C: 'C',
-    // ... add more as needed
-};
-
 // Event handler for when the bot is ready
 client.once(Events.ClientReady, (readyClient) => {
     console.log(`Ready! Logged in as ${readyClient.user.tag}`);
@@ -70,7 +61,6 @@ client.once(Events.ClientReady, (readyClient) => {
 // Add constants for validation
 const MIN_WEIGHT_LBS = 50;  // Minimum reasonable weight in pounds
 const MAX_WEIGHT_LBS = 500; // Maximum reasonable weight in pounds
-const LBS_PER_KG = 2.20462; // Conversion factor for kg to lbs
 
 // Helper function to convert kg to lbs with rounding
 function kgToLbs(kg: number): number {
@@ -112,7 +102,8 @@ function parseWeightInput(input: string): { weightLbs: number; originalUnit: 'kg
 
 // Helper function to parse weight from message
 function parseWeight(content: string): number | null {
-    const match = content.match(/!weight\s+(\d+\.?\d*)\s*(kg|lbs)?/i);
+    // Match just the number and optional unit
+    const match = content.match(/(\d+\.?\d*)\s*(kg|lbs)?/i);
     if (!match) return null;
 
     const value = parseFloat(match[1]);
@@ -121,18 +112,53 @@ function parseWeight(content: string): number | null {
     if (unit === 'kg') {
         return kgToLbs(value);
     }
-    return Number(value.toFixed(2)); // Round lbs values too
+    return Number(value.toFixed(2));
 }
 
 // Update the message handler
 client.on('messageCreate', async (message: Message) => {
     if (message.author.bot) return;
 
-    if (message.content.toLowerCase() === 'good bot') {
-        await message.reply('Thanks daddy 😇');
-        return;
+    // Check if the message mentions the bot
+    const isBotMentioned = message.mentions.users.has(client.user!.id);
+
+    if (isBotMentioned) {
+        const username = message.author.username;
+        const userColumn = userMappings[username];
+
+        console.log('Processing weight for user:', username);
+        console.log('User mappings:', userMappings);
+        console.log('Found column:', userColumn);
+
+        // Remove the bot mention and trim whitespace
+        const contentWithoutMention = message.content
+            .replace(`<@${client.user!.id}>`, '')
+            .trim();
+
+        if (!userColumn) {
+            await message.reply('Your username is not mapped to a column.');
+            return;
+        }
+
+        const weight = parseWeight(contentWithoutMention);
+        if (!weight) {
+            await message.reply('Invalid weight format. Please use: @Weight Bot <number> [kg|lbs]');
+            return;
+        }
+
+        try {
+            await sheetsService.recordWeight({
+                weight,
+                username: userColumn
+            }, userMappings);
+            await message.reply(`Weight of ${weight.toFixed(2)} lbs recorded.`);
+        } catch (error) {
+            console.error('Error recording weight:', error);
+            await message.reply('There was an error recording your weight.');
+        }
     }
 
+    // Keep the 'bad bot' response
     if (message.content.toLowerCase() === 'bad bot') {
         await message.reply("I'm doing my best 😔");
         return;
@@ -155,37 +181,6 @@ client.on('messageCreate', async (message: Message) => {
         } catch (error) {
             console.error('Error saving user mappings:', error);
             await message.reply('Error saving user mapping.');
-        }
-    }
-
-    if (message.content.startsWith('!weight')) {
-        const username = message.author.username;
-        const userColumn = userMappings[username];
-
-        console.log('Processing weight for user:', username);
-        console.log('User mappings:', userMappings);
-        console.log('Found column:', userColumn);
-
-        if (!userColumn) {
-            await message.reply('Your username is not mapped to a column.');
-            return;
-        }
-
-        const weight = parseWeight(message.content);
-        if (!weight) {
-            await message.reply('Invalid weight format. Please use: !weight <number> [kg|lbs]');
-            return;
-        }
-
-        try {
-            await sheetsService.recordWeight({
-                weight,
-                username: userColumn
-            }, userMappings);
-            await message.reply(`Weight of ${weight.toFixed(2)} lbs recorded.`);
-        } catch (error) {
-            console.error('Error recording weight:', error);
-            await message.reply('There was an error recording your weight.');
         }
     }
 });
