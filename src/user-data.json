@@ -1,20 +1,25 @@
 {
-    "users": {
-        "joshlebed": {
-            "column": "B",
-            "timezone": "America/New_York",
-            "reminders": [
-                {
-                    "id": "1",
-                    "time": "09:00",
-                    "days": ["Monday", "Wednesday", "Friday"]
-                }
-            ]
-        },
-        "kornexl9": {
-            "column": "C",
-            "timezone": "Europe/London",
-            "reminders": []
+  "users": {
+    "joshlebed": {
+      "column": "B",
+      "timezone": "America/New_York",
+      "reminders": [
+        {
+          "id": "1",
+          "time": "09:00",
+          "days": ["Monday", "Wednesday", "Friday"]
         }
+      ]
+    },
+    "kornexl9": {
+      "column": "C",
+      "timezone": "Europe/London",
+      "reminders": []
+    },
+    "dank8621": {
+      "column": "D",
+      "timezone": "America/New_York",
+      "reminders": []
     }
-} 
+  }
+}
