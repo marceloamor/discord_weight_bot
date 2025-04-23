@@ -56,7 +56,11 @@ A Discord bot that records user weights in a Google Sheet. This bot is deployed 
 1. **Build and deploy to Google Cloud Run:**
 
    ```bash
-   gcloud run deploy discord-weight-bot --source . --region us-central1 --platform managed --allow-unauthenticated
+   docker build -t discord-weight-bot .
+   docker tag discord-weight-bot gcr.io/discord-weight-bot/discord-weight-bot
+   docker push gcr.io/discord-weight-bot/discord-weight-bot
+   gcloud run deploy discord-weight-bot --image gcr.io/discord-weight-bot/discord-weight-bot \
+  --region us-central1 --platform managed --allow-unauthenticated --min-instances=1
    ```
 
 2. **Set environment variables in Cloud Run:**
